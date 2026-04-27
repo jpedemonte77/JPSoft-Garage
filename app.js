@@ -453,7 +453,7 @@ document.getElementById("btn-aplicar-ajuste").addEventListener("click", async ()
 // ============================================================
 //  NAVEGACIÓN DE VISTAS
 // ============================================================
-const TITULOS = { mapa: "Mapa de cocheras", vehiculos: "Vehículos", alquileres: "Alquileres" };
+const TITULOS = { mapa: "Cocheras", vehiculos: "Vehículos", alquileres: "Alquileres" };
 
 document.querySelectorAll(".nav-item").forEach(item => {
   item.addEventListener("click", (e) => {
