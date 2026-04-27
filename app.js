@@ -16,7 +16,6 @@ const CLOUDINARY_PRESET = "garage_preset";
 
 // ============================================================
 //  🔧 CONFIGURACIÓN FIREBASE
-//  Reemplazá estos valores con los de tu proyecto Firebase
 // ============================================================
 const firebaseConfig = {
   apiKey:            "AIzaSyAL6rHw1I5UUXFiV1lAwBLsMdavIxfc8v0",
@@ -34,10 +33,11 @@ const db  = getDatabase(app);
 // ============================================================
 //  ESTADO GLOBAL
 // ============================================================
-let vehiculos    = {};          // { id: { nombre, patente, cochera, tipo, wsp, monto, notas, tarjetaUrl } }
+let vehiculos     = {};
 let totalEspacios = 20;
-let editandoId   = null;
-let pendingFile  = null;        // File obj pendiente de subir
+let editandoId    = null;
+let pendingFrente = null;   // File pendiente cédula frente
+let pendingDorso  = null;   // File pendiente cédula dorso
 
 // ============================================================
 //  CLOUDINARY: SUBIR IMAGEN
@@ -56,17 +56,16 @@ async function subirImagenCloudinary(file) {
   const data = await res.json();
   return data.secure_url;
 }
+
 // ============================================================
 //  FIREBASE: ESCUCHAR CAMBIOS EN TIEMPO REAL
 // ============================================================
 function initFirebase() {
-  // Vehículos
   onValue(ref(db, "vehiculos"), (snap) => {
     vehiculos = snap.val() || {};
     renderAll();
   });
 
-  // Config (total de espacios)
   onValue(ref(db, "config/totalEspacios"), (snap) => {
     if (snap.val() !== null) {
       totalEspacios = snap.val();
@@ -134,7 +133,6 @@ function renderStats() {
 function renderMapa() {
   const grid = document.getElementById("cocheras-grid");
   grid.innerHTML = "";
-  const ocup = ocupados();
 
   for (let i = 1; i <= totalEspacios; i++) {
     const entrada = vehiculoPorCochera(i);
@@ -144,19 +142,16 @@ function renderMapa() {
 
     const card = document.createElement("div");
     card.className = `cochera-card ${libre ? "libre" : "ocupado"}`;
-
     card.innerHTML = `
       <span class="cochera-num">${String(i).padStart(2, "0")}</span>
       <span class="cochera-icon">${libre ? "🅿️" : (ICONOS[v.tipo] || "🚗")}</span>
       <span class="cochera-label">${libre ? "Libre" : (v.nombre || "").split(/[\s,]+/)[0]}</span>
     `;
-
     card.title = libre ? `Cochera ${i} — libre` : `${v.nombre} · ${v.patente || ""}`;
     card.addEventListener("click", () => {
       if (libre) abrirModal(null, i);
       else        abrirDetalle(id);
     });
-
     grid.appendChild(card);
   }
 }
@@ -167,10 +162,11 @@ function renderVehiculos(filtroTexto = "", filtroTipo = "") {
   grid.innerHTML = "";
 
   const lista = Object.entries(vehiculos).filter(([, v]) => {
-    const txt = filtroTexto.toLowerCase();
+    const txt      = filtroTexto.toLowerCase();
     const matchTxt = !txt ||
-      (v.nombre  || "").toLowerCase().includes(txt) ||
-      (v.patente || "").toLowerCase().includes(txt) ||
+      (v.nombre   || "").toLowerCase().includes(txt) ||
+      (v.patente  || "").toLowerCase().includes(txt) ||
+      (v.modelo   || "").toLowerCase().includes(txt) ||
       String(v.cochera).includes(txt);
     const matchTipo = !filtroTipo || v.tipo === filtroTipo;
     return matchTxt && matchTipo;
@@ -189,7 +185,7 @@ function renderVehiculos(filtroTexto = "", filtroTipo = "") {
         <div class="v-avatar">${iniciales(v.nombre)}</div>
         <div>
           <div class="v-nombre">${v.nombre || "Sin nombre"}</div>
-          <div class="v-tipo">${TIPOS[v.tipo] || v.tipo || "—"}</div>
+          <div class="v-tipo">${v.modelo || TIPOS[v.tipo] || "—"}</div>
         </div>
         <span class="v-cochera-badge">Nº ${v.cochera}</span>
       </div>
@@ -198,6 +194,8 @@ function renderVehiculos(filtroTexto = "", filtroTipo = "") {
           <span class="v-detail-key">Patente</span>
           <span class="v-patente">${v.patente || "—"}</span>
         </div>
+        ${v.dni ? `<div class="v-detail-row"><span class="v-detail-key">DNI</span><span class="v-detail-val">${v.dni}</span></div>` : ""}
+        ${v.domicilio ? `<div class="v-detail-row"><span class="v-detail-key">Domicilio</span><span class="v-detail-val">${v.domicilio}</span></div>` : ""}
         <div class="v-detail-row">
           <span class="v-detail-key">WhatsApp</span>
           <span class="v-detail-val">${v.wsp ? "+54 " + v.wsp : "—"}</span>
@@ -241,7 +239,6 @@ function renderAlquileres() {
 
   document.getElementById("alq-total").textContent = formatMonto(total);
 
-  // Guardar monto individual
   list.querySelectorAll(".alq-save-btn").forEach(btn => {
     btn.addEventListener("click", () => {
       const id    = btn.dataset.id;
@@ -258,7 +255,7 @@ function renderAlquileres() {
 //  MODAL REGISTRO / EDICIÓN
 // ============================================================
 function poblarSelectCochera(cocheraActual = null) {
-  const sel = document.getElementById("f-cochera");
+  const sel  = document.getElementById("f-cochera");
   const ocup = ocupados();
   sel.innerHTML = "";
 
@@ -282,36 +279,54 @@ function poblarSelectCochera(cocheraActual = null) {
   }
 }
 
+function resetFotos(v = {}) {
+  // Frente
+  const wrapF = document.getElementById("preview-wrap-frente");
+  const imgF  = document.getElementById("preview-frente");
+  if (v.cedulaFrente) {
+    imgF.src = v.cedulaFrente;
+    wrapF.classList.remove("hidden");
+  } else {
+    imgF.src = "";
+    wrapF.classList.add("hidden");
+  }
+  document.getElementById("f-cedula-frente").value = "";
+
+  // Dorso
+  const wrapD = document.getElementById("preview-wrap-dorso");
+  const imgD  = document.getElementById("preview-dorso");
+  if (v.cedulaDorso) {
+    imgD.src = v.cedulaDorso;
+    wrapD.classList.remove("hidden");
+  } else {
+    imgD.src = "";
+    wrapD.classList.add("hidden");
+  }
+  document.getElementById("f-cedula-dorso").value = "";
+
+  pendingFrente = null;
+  pendingDorso  = null;
+}
+
 function abrirModal(id = null, cocheraPredef = null) {
   editandoId = id;
-  pendingFile = null;
   document.getElementById("modal-titulo").textContent = id ? "Editar vehículo" : "Registrar vehículo";
 
   const v = id ? (vehiculos[id] || {}) : {};
-  document.getElementById("f-nombre").value  = v.nombre  || "";
-  document.getElementById("f-patente").value = (v.patente || "").toUpperCase();
-  document.getElementById("f-tipo").value    = v.tipo    || "auto";
-  document.getElementById("f-wsp").value     = v.wsp     || "";
-  document.getElementById("f-monto").value   = v.monto   || "";
-  document.getElementById("f-notas").value   = v.notas   || "";
+  document.getElementById("f-nombre").value    = v.nombre    || "";
+  document.getElementById("f-patente").value   = (v.patente  || "").toUpperCase();
+  document.getElementById("f-tipo").value      = v.tipo      || "auto";
+  document.getElementById("f-dni").value       = v.dni       || "";
+  document.getElementById("f-domicilio").value = v.domicilio || "";
+  document.getElementById("f-modelo").value    = v.modelo    || "";
+  document.getElementById("f-wsp").value       = v.wsp       || "";
+  document.getElementById("f-monto").value     = v.monto     || "";
+  document.getElementById("f-notas").value     = v.notas     || "";
 
-  // Foto tarjeta verde
-  const previewWrap = document.getElementById("file-preview-wrap");
-  const preview     = document.getElementById("file-preview");
-  if (v.tarjetaUrl) {
-    preview.src = v.tarjetaUrl;
-    previewWrap.classList.remove("hidden");
-  } else {
-    previewWrap.classList.add("hidden");
-    preview.src = "";
-  }
-
+  resetFotos(v);
   poblarSelectCochera(v.cochera || cocheraPredef);
-  if (cocheraPredef && !id) {
-    document.getElementById("f-cochera").value = cocheraPredef;
-  }
+  if (cocheraPredef && !id) document.getElementById("f-cochera").value = cocheraPredef;
 
-  // Botón eliminar
   const btnEl = document.getElementById("btn-eliminar");
   id ? btnEl.classList.remove("hidden") : btnEl.classList.add("hidden");
 
@@ -321,8 +336,9 @@ function abrirModal(id = null, cocheraPredef = null) {
 
 function cerrarModal() {
   document.getElementById("modal-overlay").classList.add("hidden");
-  editandoId = null;
-  pendingFile = null;
+  editandoId    = null;
+  pendingFrente = null;
+  pendingDorso  = null;
 }
 
 async function guardar() {
@@ -334,25 +350,38 @@ async function guardar() {
   if (!patente) { document.getElementById("f-patente").focus(); showToast("Ingresá la patente", "error"); return; }
   if (!cochera) { showToast("Seleccioná una cochera", "error"); return; }
 
+  // Conservar URLs existentes si no hay archivo nuevo
+  const vActual = editandoId ? (vehiculos[editandoId] || {}) : {};
+
   const datos = {
     nombre,
     patente,
-    cochera: Number(cochera),
-    tipo:    document.getElementById("f-tipo").value,
-    wsp:     document.getElementById("f-wsp").value.trim(),
-    monto:   Number(document.getElementById("f-monto").value) || 0,
-    notas:   document.getElementById("f-notas").value.trim(),
-    tarjetaUrl: editandoId ? (vehiculos[editandoId]?.tarjetaUrl || "") : ""
+    cochera:      Number(cochera),
+    tipo:         document.getElementById("f-tipo").value,
+    dni:          document.getElementById("f-dni").value.trim(),
+    domicilio:    document.getElementById("f-domicilio").value.trim(),
+    modelo:       document.getElementById("f-modelo").value.trim(),
+    wsp:          document.getElementById("f-wsp").value.trim(),
+    monto:        Number(document.getElementById("f-monto").value) || 0,
+    notas:        document.getElementById("f-notas").value.trim(),
+    cedulaFrente: vActual.cedulaFrente || "",
+    cedulaDorso:  vActual.cedulaDorso  || ""
   };
 
-  // Subir foto de tarjeta verde a Cloudinary si hay archivo nuevo
-  if (pendingFile) {
-    try {
-      datos.tarjetaUrl = await subirImagenCloudinary(pendingFile);
-    } catch (e) {
-      showToast("Error al subir la foto. Revisá la configuración de Cloudinary.", "error");
-      console.error(e);
+  // Subir fotos si hay archivos nuevos
+  try {
+    if (pendingFrente) {
+      showToast("Subiendo frente de cédula…", "");
+      datos.cedulaFrente = await subirImagenCloudinary(pendingFrente);
     }
+    if (pendingDorso) {
+      showToast("Subiendo dorso de cédula…", "");
+      datos.cedulaDorso = await subirImagenCloudinary(pendingDorso);
+    }
+  } catch (e) {
+    showToast("Error al subir fotos. Revisá Cloudinary.", "error");
+    console.error(e);
+    return;
   }
 
   try {
@@ -373,14 +402,13 @@ async function guardar() {
 async function eliminar() {
   if (!editandoId) return;
   if (!confirm("¿Eliminás este vehículo de la cochera?")) return;
-
   await remove(ref(db, `vehiculos/${editandoId}`));
   showToast("Registro eliminado", "");
   cerrarModal();
 }
 
 // ============================================================
-//  MODAL DETALLE COCHERA
+//  MODAL DETALLE
 // ============================================================
 function abrirDetalle(id) {
   const v = vehiculos[id];
@@ -391,15 +419,23 @@ function abrirDetalle(id) {
   const body = document.getElementById("detalle-body");
   body.innerHTML = `
     <div class="detalle-row"><span class="detalle-key">Nombre</span><span class="detalle-val">${v.nombre || "—"}</span></div>
+    ${v.dni       ? `<div class="detalle-row"><span class="detalle-key">DNI</span><span class="detalle-val">${v.dni}</span></div>` : ""}
+    ${v.domicilio ? `<div class="detalle-row"><span class="detalle-key">Domicilio</span><span class="detalle-val">${v.domicilio}</span></div>` : ""}
     <div class="detalle-row"><span class="detalle-key">Patente</span><span class="detalle-val"><span class="v-patente">${v.patente || "—"}</span></span></div>
-    <div class="detalle-row"><span class="detalle-key">Vehículo</span><span class="detalle-val">${ICONOS[v.tipo] || ""} ${TIPOS[v.tipo] || "—"}</span></div>
+    <div class="detalle-row"><span class="detalle-key">Vehículo</span><span class="detalle-val">${ICONOS[v.tipo] || ""} ${v.modelo || TIPOS[v.tipo] || "—"}</span></div>
     <div class="detalle-row"><span class="detalle-key">WhatsApp</span><span class="detalle-val">${v.wsp ? "+54 " + v.wsp : "—"}</span></div>
     <div class="detalle-row"><span class="detalle-key">Alquiler</span><span class="detalle-val">${formatMonto(v.monto)}</span></div>
     ${v.notas ? `<div class="detalle-row"><span class="detalle-key">Notas</span><span class="detalle-val">${v.notas}</span></div>` : ""}
-    ${v.tarjetaUrl ? `<div class="detalle-row" style="flex-direction:column"><span class="detalle-key" style="margin-bottom:6px">Tarjeta verde</span><img src="${v.tarjetaUrl}" class="detalle-tarjeta" /></div>` : ""}
+    ${v.cedulaFrente || v.cedulaDorso ? `
+      <div class="detalle-row" style="flex-direction:column;gap:8px">
+        <span class="detalle-key" style="margin-bottom:2px">Cédula</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${v.cedulaFrente ? `<div style="text-align:center"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Frente</div><img src="${v.cedulaFrente}" class="detalle-tarjeta" style="max-width:160px" /></div>` : ""}
+          ${v.cedulaDorso  ? `<div style="text-align:center"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Dorso</div><img src="${v.cedulaDorso}"  class="detalle-tarjeta" style="max-width:160px" /></div>` : ""}
+        </div>
+      </div>` : ""}
   `;
 
-  // Botón WhatsApp
   const btnWsp = document.getElementById("detalle-wsp");
   if (v.wsp) {
     btnWsp.classList.remove("hidden");
@@ -431,17 +467,14 @@ document.getElementById("btn-aplicar-ajuste").addEventListener("click", async ()
   const valor = Number(document.getElementById("ajuste-valor").value);
 
   if (!valor || valor <= 0) { showToast("Ingresá un valor válido", "error"); return; }
-  if (!confirm(`¿Aplicar ajuste a TODOS los alquileres?`)) return;
+  if (!confirm("¿Aplicar ajuste a TODOS los alquileres?")) return;
 
   const updates = {};
   Object.entries(vehiculos).forEach(([id, v]) => {
     const montoActual = Number(v.monto) || 0;
-    let nuevoMonto;
-    if (tipo === "porcentaje") {
-      nuevoMonto = Math.round(montoActual * (1 + valor / 100));
-    } else {
-      nuevoMonto = valor;
-    }
+    const nuevoMonto  = tipo === "porcentaje"
+      ? Math.round(montoActual * (1 + valor / 100))
+      : valor;
     updates[`vehiculos/${id}/monto`] = nuevoMonto;
   });
 
@@ -459,16 +492,11 @@ document.querySelectorAll(".nav-item").forEach(item => {
   item.addEventListener("click", (e) => {
     e.preventDefault();
     const view = item.dataset.view;
-
     document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
     item.classList.add("active");
-
     document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
     document.getElementById(`view-${view}`).classList.add("active");
-
     document.getElementById("topbar-title").textContent = TITULOS[view] || "";
-
-    // Cerrar sidebar en mobile
     closeSidebar();
   });
 });
@@ -508,15 +536,16 @@ document.getElementById("esp-plus").addEventListener("click", () => {
 });
 
 // ============================================================
-//  BÚSQUEDA Y FILTRO — VEHÍCULOS
+//  BÚSQUEDA Y FILTRO
 // ============================================================
 document.getElementById("search-vehiculos").addEventListener("input", aplicarFiltros);
 document.getElementById("filter-tipo").addEventListener("change", aplicarFiltros);
 
 function aplicarFiltros() {
-  const txt  = document.getElementById("search-vehiculos").value;
-  const tipo = document.getElementById("filter-tipo").value;
-  renderVehiculos(txt, tipo);
+  renderVehiculos(
+    document.getElementById("search-vehiculos").value,
+    document.getElementById("filter-tipo").value
+  );
 }
 
 // ============================================================
@@ -529,7 +558,6 @@ document.getElementById("btn-guardar").addEventListener("click",  guardar);
 document.getElementById("btn-eliminar").addEventListener("click", eliminar);
 document.getElementById("detalle-close").addEventListener("click", cerrarDetalle);
 
-// Cerrar modal al hacer click en overlay
 document.getElementById("modal-overlay").addEventListener("click", (e) => {
   if (e.target === document.getElementById("modal-overlay")) cerrarModal();
 });
@@ -538,45 +566,54 @@ document.getElementById("detalle-overlay").addEventListener("click", (e) => {
 });
 
 // ============================================================
-//  MANEJO DE ARCHIVO — TARJETA VERDE
+//  MANEJO DE FOTOS — CÉDULA FRENTE Y DORSO
 // ============================================================
-const fileDrop    = document.getElementById("file-drop");
-const fileInput   = document.getElementById("f-tarjeta");
-const previewWrap = document.getElementById("file-preview-wrap");
-const previewImg  = document.getElementById("file-preview");
-const fileRemove  = document.getElementById("file-remove");
+function setupFileDrop(dropId, inputId, previewId, wrapId, removeId, lado) {
+  const drop   = document.getElementById(dropId);
+  const input  = document.getElementById(inputId);
+  const img    = document.getElementById(previewId);
+  const wrap   = document.getElementById(wrapId);
+  const btnRem = document.getElementById(removeId);
 
-function handleFile(file) {
-  if (!file || !file.type.startsWith("image/")) {
-    showToast("Solo se aceptan imágenes", "error");
-    return;
+  function handleFile(file) {
+    if (!file || !file.type.startsWith("image/")) {
+      showToast("Solo se aceptan imágenes", "error");
+      return;
+    }
+    if (lado === "frente") pendingFrente = file;
+    else                   pendingDorso  = file;
+
+    img.src = URL.createObjectURL(file);
+    wrap.classList.remove("hidden");
   }
-  pendingFile = file;
-  const url = URL.createObjectURL(file);
-  previewImg.src = url;
-  previewWrap.classList.remove("hidden");
+
+  input.addEventListener("change", () => handleFile(input.files[0]));
+
+  drop.addEventListener("dragover",  (e) => { e.preventDefault(); drop.classList.add("dragover"); });
+  drop.addEventListener("dragleave", ()  => drop.classList.remove("dragover"));
+  drop.addEventListener("drop", (e) => {
+    e.preventDefault();
+    drop.classList.remove("dragover");
+    handleFile(e.dataTransfer.files[0]);
+  });
+
+  btnRem.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (lado === "frente") {
+      pendingFrente = null;
+      if (editandoId && vehiculos[editandoId]) vehiculos[editandoId].cedulaFrente = "";
+    } else {
+      pendingDorso = null;
+      if (editandoId && vehiculos[editandoId]) vehiculos[editandoId].cedulaDorso = "";
+    }
+    img.src = "";
+    input.value = "";
+    wrap.classList.add("hidden");
+  });
 }
 
-fileInput.addEventListener("change",  () => handleFile(fileInput.files[0]));
-fileDrop.addEventListener("dragover",  (e) => { e.preventDefault(); fileDrop.classList.add("dragover"); });
-fileDrop.addEventListener("dragleave", ()  => fileDrop.classList.remove("dragover"));
-fileDrop.addEventListener("drop", (e) => {
-  e.preventDefault();
-  fileDrop.classList.remove("dragover");
-  handleFile(e.dataTransfer.files[0]);
-});
-
-fileRemove.addEventListener("click", (e) => {
-  e.stopPropagation();
-  pendingFile = null;
-  previewImg.src = "";
-  previewWrap.classList.add("hidden");
-  fileInput.value = "";
-  // Si estamos editando, marcamos la tarjeta para borrar
-  if (editandoId && vehiculos[editandoId]) {
-    vehiculos[editandoId].tarjetaUrl = "";
-  }
-});
+setupFileDrop("file-drop-frente", "f-cedula-frente", "preview-frente", "preview-wrap-frente", "remove-frente", "frente");
+setupFileDrop("file-drop-dorso",  "f-cedula-dorso",  "preview-dorso",  "preview-wrap-dorso",  "remove-dorso",  "dorso");
 
 // ============================================================
 //  INIT
