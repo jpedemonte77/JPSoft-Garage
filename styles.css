@@ -1221,12 +1221,14 @@ select.form-input option { background: var(--bg2); }
    LOGIN SCREEN
 =========================== */
 .login-screen {
-  min-height: 100vh;
+  position: fixed;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background: var(--bg);
   padding: 1.5rem;
+  z-index: 9999;
 }
 
 .login-card {
