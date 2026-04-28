@@ -1213,3 +1213,108 @@ select.form-input option { background: var(--bg2); }
     grid-column: 2;
   }
 }
+
+/* ===========================
+   LOGIN SCREEN
+=========================== */
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 1.5rem;
+}
+
+.login-card {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-lg);
+  padding: 2rem 2rem 2.25rem;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: var(--shadow);
+  animation: slideUp 0.25s ease;
+}
+
+.login-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 2rem;
+}
+
+.login-brand {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.login-sub {
+  font-size: 12px;
+  color: var(--text3);
+  margin-top: 2px;
+}
+
+.btn-login-submit {
+  width: 100%;
+  padding: .65rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  transition: background var(--transition);
+  margin-top: .25rem;
+}
+.btn-login-submit:hover    { background: var(--accent-dark); }
+.btn-login-submit:disabled { opacity: .6; cursor: default; }
+
+.login-error {
+  font-size: 13px;
+  color: var(--ocupado);
+  min-height: 18px;
+  margin-bottom: .5rem;
+  text-align: center;
+}
+
+/* ===========================
+   USER CHIP (topbar)
+=========================== */
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px 4px 10px;
+}
+
+.user-nombre {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+.btn-logout {
+  background: none;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  transition: background var(--transition), color var(--transition);
+}
+.btn-logout:hover { background: var(--ocupado-bg); color: var(--ocupado); }
+
+@media (max-width: 480px) {
+  .user-nombre { display: none; }
+  .login-card  { padding: 1.5rem; }
+}
