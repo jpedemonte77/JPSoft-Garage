@@ -950,3 +950,266 @@ select.form-input option { background: var(--bg2); }
 @media (max-width: 480px) {
   .cedula-grid { grid-template-columns: 1fr; }
 }
+
+/* ===========================
+   PAGOS VIEW
+=========================== */
+.pagos-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.mes-nav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.mes-label {
+  padding: 0 1rem;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg2);
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  line-height: 32px;
+  min-width: 130px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.pagos-resumen-pills {
+  display: flex;
+  gap: 8px;
+}
+
+.resumen-pill {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 12px;
+  border-radius: 20px;
+}
+.resumen-pill.pagados    { background: var(--libre-bg);   color: var(--libre);   border: 1px solid var(--libre-border); }
+.resumen-pill.pendientes { background: var(--ocupado-bg); color: var(--ocupado); border: 1px solid var(--ocupado-border); }
+
+/* Resumen admins */
+.admins-resumen {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 1.25rem;
+}
+
+.admin-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: .875rem 1.125rem;
+}
+
+.admin-nombre {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: .5rem;
+}
+
+.admin-totales {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-pill {
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: var(--text2);
+  background: var(--bg3);
+}
+.admin-pill strong { color: var(--text); }
+.admin-pill.total-admin { background: rgba(79,142,247,0.1); color: var(--accent); }
+.admin-pill.total-admin strong { color: var(--accent); }
+
+/* Lista de pagos */
+.pagos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pago-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto auto;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .75rem 1rem;
+  transition: border-color var(--transition);
+}
+.pago-row:hover { border-color: var(--border2); }
+.pago-row.pagado { border-color: var(--libre-border); background: var(--libre-bg); }
+
+.pago-num {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  text-align: center;
+}
+
+.pago-info { min-width: 0; }
+.pago-nombre {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pago-monto-label {
+  font-size: 12px;
+  color: var(--text3);
+  font-family: 'DM Mono', monospace;
+  margin-top: 1px;
+}
+
+/* Toggle pagado */
+.pago-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.toggle-switch {
+  width: 36px;
+  height: 20px;
+  background: var(--bg3);
+  border-radius: 10px;
+  position: relative;
+  transition: background var(--transition);
+  border: 1px solid var(--border2);
+  flex-shrink: 0;
+}
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text3);
+  top: 2px;
+  left: 2px;
+  transition: transform var(--transition), background var(--transition);
+}
+.pago-row.pagado .toggle-switch {
+  background: var(--libre);
+  border-color: var(--libre);
+}
+.pago-row.pagado .toggle-switch::after {
+  transform: translateX(16px);
+  background: #fff;
+}
+.toggle-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text3);
+}
+.pago-row.pagado .toggle-label { color: var(--libre); }
+
+/* Selects de método y admin */
+.pago-select {
+  padding: .35rem .6rem;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text2);
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  cursor: pointer;
+  transition: border-color var(--transition), opacity var(--transition);
+  min-width: 100px;
+}
+.pago-select:focus { border-color: var(--accent); }
+.pago-select:disabled { opacity: .35; cursor: default; }
+.pago-select option { background: var(--bg2); }
+
+/* Historial badge */
+.pago-historial-btn {
+  background: none;
+  border: none;
+  color: var(--text3);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background var(--transition), color var(--transition);
+  flex-shrink: 0;
+}
+.pago-historial-btn:hover { background: var(--bg3); color: var(--text2); }
+
+/* Modal historial */
+.historial-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.historial-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg3);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+
+.historial-mes {
+  font-weight: 600;
+  color: var(--text);
+  min-width: 90px;
+}
+.historial-monto {
+  font-family: 'DM Mono', monospace;
+  color: var(--libre);
+  font-size: 13px;
+}
+.historial-meta {
+  color: var(--text3);
+  font-size: 12px;
+  margin-left: auto;
+  text-align: right;
+}
+.historial-empty {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text3);
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .admins-resumen { grid-template-columns: 1fr; }
+  .pago-row {
+    grid-template-columns: 28px 1fr;
+    grid-template-rows: auto auto;
+  }
+  .pago-toggle, .pago-select, .pago-historial-btn {
+    grid-column: 2;
+  }
+}
