@@ -465,7 +465,7 @@ function abrirDetalle(id) {
     ${v.domicilio ? `<div class="detalle-row"><span class="detalle-key">Domicilio</span><span class="detalle-val">${v.domicilio}</span></div>` : ""}
     <div class="detalle-row"><span class="detalle-key">Patente</span><span class="detalle-val"><span class="v-patente">${v.patente || "—"}</span></span></div>
     <div class="detalle-row"><span class="detalle-key">Vehículo</span><span class="detalle-val">${ICONOS[v.tipo] || ""} ${v.modelo || TIPOS[v.tipo] || "—"}</span></div>
-    ${v.seguro ? `<div class="detalle-row"><span class="detalle-key">Seguro</span><span class="detalle-val">${v.seguro}</span></div>` : ""}
+    <div class="detalle-row"><span class="detalle-key">Seguro</span><span class="detalle-val">${v.seguro || "—"}</span></div>
     <div class="detalle-row"><span class="detalle-key">WhatsApp</span><span class="detalle-val">${v.wsp ? "+54 " + v.wsp : "—"}</span></div>
     <div class="detalle-row"><span class="detalle-key">Alquiler</span><span class="detalle-val">${formatMonto(v.monto)}</span></div>
     ${v.notas ? `<div class="detalle-row"><span class="detalle-key">Notas</span><span class="detalle-val">${v.notas}</span></div>` : ""}
