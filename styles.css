@@ -37,6 +37,7 @@
 
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--text); display: flex; min-height: 100vh; overflow-x: hidden; }
+#app-wrapper { display: flex; flex: 1; min-height: 100vh; min-width: 0; }
 
 /* ===========================
    SIDEBAR
