@@ -45,6 +45,9 @@ let pendingFrente = null;
 let pendingDorso  = null;
 
 // Mes activo en la vista de pagos
+let listaEspera   = {};   // { id: { nombre, wsp, notas, fecha } }
+let esperaEditId  = null;
+
 let mesActivo = (() => {
   const hoy = new Date();
   return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
@@ -88,6 +91,11 @@ function initFirebase() {
   onValue(ref(db, "pagos"), (snap) => {
     pagos = snap.val() || {};
     renderPagos();
+  });
+
+  onValue(ref(db, "espera"), (snap) => {
+    listaEspera = snap.val() || {};
+    renderEspera();
   });
 }
 
@@ -137,6 +145,7 @@ function renderAll() {
   renderVehiculos();
   renderAlquileres();
   renderPagos();
+  renderEspera();
 }
 
 const MESES_NOMBRES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
@@ -676,7 +685,7 @@ function abrirHistorial(vid, nombre) {
 // ============================================================
 //  NAVEGACIÓN DE VISTAS
 // ============================================================
-const TITULOS = { mapa: "Cocheras", vehiculos: "Vehículos", alquileres: "Alquileres", pagos: "Pagos" };
+const TITULOS = { mapa: "Cocheras", vehiculos: "Vehículos", alquileres: "Alquileres", pagos: "Pagos", espera: "Lista de espera" };
 
 document.querySelectorAll(".nav-item").forEach(item => {
   item.addEventListener("click", (e) => {
@@ -876,4 +885,128 @@ document.getElementById("login-form").addEventListener("submit", async (e) => {
 document.getElementById("btn-logout").addEventListener("click", async () => {
   if (!confirm("¿Cerrar sesión?")) return;
   await signOut(auth);
+});
+
+// ============================================================
+//  LISTA DE ESPERA
+// ============================================================
+function formatFecha(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function renderEspera() {
+  const lista = Object.entries(listaEspera)
+    .sort((a, b) => (a[1].fecha || "").localeCompare(b[1].fecha || ""));
+
+  document.getElementById("espera-total").textContent =
+    `${lista.length} en espera`;
+
+  const list = document.getElementById("espera-list");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (lista.length === 0) {
+    list.innerHTML = `<div class="espera-empty">La lista de espera está vacía.</div>`;
+    return;
+  }
+
+  lista.forEach(([id, p], idx) => {
+    const card = document.createElement("div");
+    card.className = "espera-card";
+    card.innerHTML = `
+      <div class="espera-pos">${idx + 1}</div>
+      <div class="espera-info">
+        <div class="espera-nombre">${p.nombre || "—"}</div>
+        <div class="espera-detalle">${p.wsp ? "+54 " + p.wsp : "Sin WhatsApp"}${p.notas ? " · " + p.notas : ""}</div>
+      </div>
+      <span class="espera-fecha">${formatFecha(p.fecha)}</span>
+      <button class="espera-wsp-btn ${!p.wsp ? "hidden" : ""}" title="Enviar WhatsApp" data-wsp="${p.wsp || ""}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.149-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M11.99 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.985-1.31A9.954 9.954 0 0 0 11.99 22C17.522 22 22 17.523 22 12S17.522 2 11.99 2zm.01 18.181a8.17 8.17 0 0 1-4.165-1.138l-.299-.177-3.093.812.825-3.02-.194-.31A8.185 8.185 0 0 1 3.818 12C3.818 7.479 7.48 3.818 12 3.818c4.522 0 8.182 3.661 8.182 8.182 0 4.522-3.66 8.181-8.182 8.181z"/></svg>
+      </button>
+    `;
+
+    // Click en la card → editar (excepto si clickeó el botón WSP)
+    card.addEventListener("click", (e) => {
+      if (e.target.closest(".espera-wsp-btn")) return;
+      abrirEsperaModal(id);
+    });
+
+    // Botón WhatsApp
+    const btnWsp = card.querySelector(".espera-wsp-btn");
+    if (btnWsp) {
+      btnWsp.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const num = p.wsp.replace(/\D/g, "");
+        window.open(`https://wa.me/54${num}`, "_blank");
+      });
+    }
+
+    list.appendChild(card);
+  });
+}
+
+function abrirEsperaModal(id = null) {
+  esperaEditId = id;
+  const p = id ? (listaEspera[id] || {}) : {};
+  document.getElementById("espera-modal-titulo").textContent = id ? "Editar persona" : "Agregar a lista de espera";
+  document.getElementById("esp-nombre").value = p.nombre || "";
+  document.getElementById("esp-wsp").value    = p.wsp    || "";
+  document.getElementById("esp-notas").value  = p.notas  || "";
+
+  const btnEl = document.getElementById("esp-btn-eliminar");
+  id ? btnEl.classList.remove("hidden") : btnEl.classList.add("hidden");
+
+  document.getElementById("espera-modal-overlay").classList.remove("hidden");
+  document.getElementById("esp-nombre").focus();
+}
+
+function cerrarEsperaModal() {
+  document.getElementById("espera-modal-overlay").classList.add("hidden");
+  esperaEditId = null;
+}
+
+async function guardarEspera() {
+  const nombre = document.getElementById("esp-nombre").value.trim();
+  if (!nombre) { document.getElementById("esp-nombre").focus(); showToast("Ingresá el nombre", "error"); return; }
+
+  const datos = {
+    nombre,
+    wsp:   document.getElementById("esp-wsp").value.trim(),
+    notas: document.getElementById("esp-notas").value.trim(),
+    fecha: esperaEditId ? (listaEspera[esperaEditId]?.fecha || new Date().toISOString()) : new Date().toISOString()
+  };
+
+  try {
+    if (esperaEditId) {
+      await update(ref(db, `espera/${esperaEditId}`), datos);
+      showToast("Registro actualizado ✓", "success");
+    } else {
+      await push(ref(db, "espera"), datos);
+      showToast("Persona agregada a la lista ✓", "success");
+    }
+    cerrarEsperaModal();
+  } catch (e) {
+    showToast("Error al guardar", "error");
+    console.error(e);
+  }
+}
+
+async function eliminarEspera() {
+  if (!esperaEditId) return;
+  if (!confirm("¿Eliminás esta persona de la lista de espera?")) return;
+  await remove(ref(db, `espera/${esperaEditId}`));
+  showToast("Persona eliminada de la lista", "");
+  cerrarEsperaModal();
+}
+
+// Botones del modal espera
+document.getElementById("btn-nuevo-espera").addEventListener("click",   () => abrirEsperaModal());
+document.getElementById("esp-btn-guardar").addEventListener("click",    guardarEspera);
+document.getElementById("esp-btn-eliminar").addEventListener("click",   eliminarEspera);
+document.getElementById("esp-btn-cancelar").addEventListener("click",   cerrarEsperaModal);
+document.getElementById("espera-modal-close").addEventListener("click", cerrarEsperaModal);
+document.getElementById("espera-modal-overlay").addEventListener("click", (e) => {
+  if (e.target === document.getElementById("espera-modal-overlay")) cerrarEsperaModal();
 });
