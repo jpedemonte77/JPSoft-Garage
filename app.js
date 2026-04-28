@@ -7,6 +7,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import {
   getDatabase, ref, set, push, onValue, remove, update
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import {
+  getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // ============================================================
 //  🖼️ CONFIGURACIÓN CLOUDINARY
@@ -27,8 +30,9 @@ const firebaseConfig = {
   appId:             "1:53748268483:web:8f0ecc612788a9adb5d176"
 };
 
-const app = initializeApp(firebaseConfig);
-const db  = getDatabase(app);
+const app  = initializeApp(firebaseConfig);
+const db   = getDatabase(app);
+const auth = getAuth(app);
 
 // ============================================================
 //  ESTADO GLOBAL
@@ -804,4 +808,72 @@ setupFileDrop("file-drop-dorso",  "f-cedula-dorso",  "preview-dorso",  "preview-
 // ============================================================
 //  INIT
 // ============================================================
-initFirebase();
+// initFirebase() se llama desde mostrarApp() tras autenticación exitosa
+
+// ============================================================
+//  AUTENTICACIÓN
+// ============================================================
+
+// Nombres para mostrar según email
+const ADMIN_NOMBRES = {
+  "joaquin@jpsoft-garage.com": "Joaquín",
+  "federico@jpsoft-garage.com": "Federico"
+};
+
+function mostrarApp(user) {
+  document.getElementById("login-screen").classList.add("hidden");
+  document.getElementById("app-wrapper").classList.remove("hidden");
+  // Mostrar nombre del usuario logueado en el topbar
+  const nombre = ADMIN_NOMBRES[user.email] || user.email;
+  document.getElementById("user-nombre").textContent = nombre;
+  // Iniciar datos solo cuando hay sesión
+  initFirebase();
+}
+
+function mostrarLogin() {
+  document.getElementById("login-screen").classList.remove("hidden");
+  document.getElementById("app-wrapper").classList.add("hidden");
+}
+
+// Observar estado de sesión
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    mostrarApp(user);
+  } else {
+    mostrarLogin();
+  }
+});
+
+// Formulario de login
+document.getElementById("login-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email    = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const btnLogin = document.getElementById("btn-login");
+  const errorEl  = document.getElementById("login-error");
+
+  errorEl.textContent = "";
+  btnLogin.textContent = "Ingresando…";
+  btnLogin.disabled = true;
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    // onAuthStateChanged dispara mostrarApp automáticamente
+  } catch (err) {
+    let msg = "Error al ingresar. Revisá tus datos.";
+    if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
+      msg = "Email o contraseña incorrectos.";
+    } else if (err.code === "auth/too-many-requests") {
+      msg = "Demasiados intentos. Intentá más tarde.";
+    }
+    errorEl.textContent = msg;
+    btnLogin.textContent = "Ingresar";
+    btnLogin.disabled = false;
+  }
+});
+
+// Botón cerrar sesión
+document.getElementById("btn-logout").addEventListener("click", async () => {
+  if (!confirm("¿Cerrar sesión?")) return;
+  await signOut(auth);
+});
