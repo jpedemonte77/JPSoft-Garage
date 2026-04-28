@@ -34,10 +34,17 @@ const db  = getDatabase(app);
 //  ESTADO GLOBAL
 // ============================================================
 let vehiculos     = {};
+let pagos         = {};   // { "YYYY-MM": { vehiculoId: { pagado, metodo, admin, monto, fecha } } }
 let totalEspacios = 20;
 let editandoId    = null;
-let pendingFrente = null;   // File pendiente cédula frente
-let pendingDorso  = null;   // File pendiente cédula dorso
+let pendingFrente = null;
+let pendingDorso  = null;
+
+// Mes activo en la vista de pagos
+let mesActivo = (() => {
+  const hoy = new Date();
+  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}`;
+})();
 
 // ============================================================
 //  CLOUDINARY: SUBIR IMAGEN
@@ -72,6 +79,11 @@ function initFirebase() {
       document.getElementById("esp-num").textContent = totalEspacios;
     }
     renderAll();
+  });
+
+  onValue(ref(db, "pagos"), (snap) => {
+    pagos = snap.val() || {};
+    renderPagos();
   });
 }
 
@@ -120,6 +132,20 @@ function renderAll() {
   renderMapa();
   renderVehiculos();
   renderAlquileres();
+  renderPagos();
+}
+
+const MESES_NOMBRES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+function mesLabel(clave) {
+  const [anio, mes] = clave.split("-");
+  return `${MESES_NOMBRES[Number(mes) - 1]} ${anio}`;
+}
+
+function mesOffset(clave, offset) {
+  const [anio, mes] = clave.split("-").map(Number);
+  const d = new Date(anio, mes - 1 + offset, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function renderStats() {
@@ -457,6 +483,9 @@ function abrirDetalle(id) {
 
 function cerrarDetalle() {
   document.getElementById("detalle-overlay").classList.add("hidden");
+  // Restaurar botones por si se usó para historial
+  document.getElementById("detalle-editar").classList.remove("hidden");
+  document.getElementById("detalle-wsp").classList.remove("hidden");
 }
 
 // ============================================================
@@ -484,9 +513,166 @@ document.getElementById("btn-aplicar-ajuste").addEventListener("click", async ()
 });
 
 // ============================================================
+//  PAGOS
+// ============================================================
+function renderPagos() {
+  // Etiqueta del mes
+  document.getElementById("mes-label").textContent = mesLabel(mesActivo);
+
+  const pagosMes = (pagos[mesActivo] || {});
+  const lista = Object.entries(vehiculos)
+    .sort((a, b) => Number(a[1].cochera) - Number(b[1].cochera));
+
+  // Contadores resumen
+  let pagados = 0, pendientes = 0;
+  let jqEf = 0, jqTr = 0, fdEf = 0, fdTr = 0;
+
+  lista.forEach(([vid, v]) => {
+    const p = pagosMes[vid];
+    if (p && p.pagado) {
+      pagados++;
+      const m = Number(p.monto) || 0;
+      if (p.admin === "joaquin") { p.metodo === "transferencia" ? jqTr += m : jqEf += m; }
+      else                       { p.metodo === "transferencia" ? fdTr += m : fdEf += m; }
+    } else {
+      pendientes++;
+    }
+  });
+
+  document.getElementById("pill-pagados").textContent    = `${pagados} pagado${pagados !== 1 ? "s" : ""}`;
+  document.getElementById("pill-pendientes").textContent = `${pendientes} pendiente${pendientes !== 1 ? "s" : ""}`;
+  document.getElementById("jq-ef").textContent  = formatMonto(jqEf);
+  document.getElementById("jq-tr").textContent  = formatMonto(jqTr);
+  document.getElementById("jq-tot").textContent = formatMonto(jqEf + jqTr);
+  document.getElementById("fd-ef").textContent  = formatMonto(fdEf);
+  document.getElementById("fd-tr").textContent  = formatMonto(fdTr);
+  document.getElementById("fd-tot").textContent = formatMonto(fdEf + fdTr);
+
+  // Lista
+  const list = document.getElementById("pagos-list");
+  list.innerHTML = "";
+
+  if (lista.length === 0) {
+    list.innerHTML = `<div class="v-empty">No hay inquilinos registrados.</div>`;
+    return;
+  }
+
+  lista.forEach(([vid, v]) => {
+    const p       = pagosMes[vid] || {};
+    const esPagado = !!p.pagado;
+    const monto   = Number(v.monto) || 0;
+
+    const row = document.createElement("div");
+    row.className = `pago-row${esPagado ? " pagado" : ""}`;
+    row.innerHTML = `
+      <span class="pago-num">${String(v.cochera).padStart(2,"0")}</span>
+      <div class="pago-info">
+        <div class="pago-nombre">${v.nombre || "—"}</div>
+        <div class="pago-monto-label">${formatMonto(monto)}</div>
+      </div>
+      <div class="pago-toggle" title="Marcar como pagado">
+        <div class="toggle-switch"></div>
+        <span class="toggle-label">${esPagado ? "Pagado" : "Pendiente"}</span>
+      </div>
+      <select class="pago-select" id="met-${vid}" ${!esPagado ? "disabled" : ""}>
+        <option value="efectivo"      ${p.metodo === "efectivo"      ? "selected" : ""}>💵 Efectivo</option>
+        <option value="transferencia" ${p.metodo === "transferencia" ? "selected" : ""}>📲 Transferencia</option>
+      </select>
+      <select class="pago-select" id="adm-${vid}" ${!esPagado ? "disabled" : ""}>
+        <option value="joaquin"  ${p.admin === "joaquin"  ? "selected" : ""}>Joaquín</option>
+        <option value="federico" ${p.admin === "federico" ? "selected" : ""}>Federico</option>
+      </select>
+      <button class="pago-historial-btn" title="Ver historial" data-vid="${vid}">🕐</button>
+    `;
+
+    // Toggle pagado/pendiente
+    const toggle = row.querySelector(".pago-toggle");
+    toggle.addEventListener("click", async () => {
+      const nuevoPagado = !esPagado;
+      const metodo = row.querySelector(`#met-${vid}`).value || "efectivo";
+      const admin  = row.querySelector(`#adm-${vid}`).value || "joaquin";
+      const datos  = nuevoPagado
+        ? { pagado: true, metodo, admin, monto, fecha: new Date().toISOString() }
+        : { pagado: false, metodo: "", admin: "", monto: 0, fecha: "" };
+      await set(ref(db, `pagos/${mesActivo}/${vid}`), datos);
+    });
+
+    // Cambio de método o admin (solo si pagado)
+    const selMet = row.querySelector(`#met-${vid}`);
+    const selAdm = row.querySelector(`#adm-${vid}`);
+    const guardarSelects = async () => {
+      if (!esPagado) return;
+      await update(ref(db, `pagos/${mesActivo}/${vid}`), {
+        metodo: selMet.value,
+        admin:  selAdm.value
+      });
+    };
+    selMet.addEventListener("change", guardarSelects);
+    selAdm.addEventListener("change", guardarSelects);
+
+    // Botón historial
+    row.querySelector(".pago-historial-btn").addEventListener("click", () => {
+      abrirHistorial(vid, v.nombre);
+    });
+
+    list.appendChild(row);
+  });
+}
+
+// Navegación de meses
+document.getElementById("mes-prev").addEventListener("click", () => {
+  mesActivo = mesOffset(mesActivo, -1);
+  renderPagos();
+});
+document.getElementById("mes-next").addEventListener("click", () => {
+  mesActivo = mesOffset(mesActivo, +1);
+  renderPagos();
+});
+
+// ---- MODAL HISTORIAL ----
+function abrirHistorial(vid, nombre) {
+  // Reutilizamos el modal detalle para historial
+  document.getElementById("detalle-titulo").textContent = `Historial — ${nombre || "Inquilino"}`;
+
+  const body = document.getElementById("detalle-body");
+
+  // Recopilar todos los meses con pago para este inquilino
+  const historial = [];
+  Object.entries(pagos).forEach(([mes, mesDatos]) => {
+    const p = mesDatos[vid];
+    if (p && p.pagado) historial.push({ mes, ...p });
+  });
+
+  historial.sort((a, b) => b.mes.localeCompare(a.mes)); // más reciente primero
+
+  if (historial.length === 0) {
+    body.innerHTML = `<div class="historial-empty">Sin pagos registrados aún.</div>`;
+  } else {
+    body.innerHTML = `<div class="historial-list">` +
+      historial.map(h => `
+        <div class="historial-item">
+          <span class="historial-mes">${mesLabel(h.mes)}</span>
+          <span class="historial-monto">${formatMonto(h.monto)}</span>
+          <span class="historial-meta">
+            ${h.metodo === "transferencia" ? "📲" : "💵"}
+            ${h.admin === "joaquin" ? "Joaquín" : "Federico"}
+          </span>
+        </div>
+      `).join("") +
+    `</div>`;
+  }
+
+  // Ocultar botones de editar/wsp del modal detalle
+  document.getElementById("detalle-editar").classList.add("hidden");
+  document.getElementById("detalle-wsp").classList.add("hidden");
+
+  document.getElementById("detalle-overlay").classList.remove("hidden");
+}
+
+// ============================================================
 //  NAVEGACIÓN DE VISTAS
 // ============================================================
-const TITULOS = { mapa: "Cocheras", vehiculos: "Vehículos", alquileres: "Alquileres" };
+const TITULOS = { mapa: "Cocheras", vehiculos: "Vehículos", alquileres: "Alquileres", pagos: "Pagos" };
 
 document.querySelectorAll(".nav-item").forEach(item => {
   item.addEventListener("click", (e) => {
