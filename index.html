@@ -78,6 +78,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
         Pagos
       </a>
+      <a href="#" class="nav-item" data-view="espera">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/><line x1="19" y1="8" x2="22" y2="8"/><line x1="20.5" y1="6.5" x2="20.5" y2="9.5"/></svg>
+        Lista de espera
+      </a>
     </nav>
   </aside>
 
@@ -206,6 +210,20 @@
 
   </div>
 
+  <!-- VIEW: LISTA DE ESPERA -->
+    <main class="view" id="view-espera">
+      <div class="espera-toolbar">
+        <div class="espera-counter" id="espera-counter">
+          <span class="espera-badge" id="espera-total">0 en espera</span>
+        </div>
+        <button class="btn-primary" id="btn-nuevo-espera">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Agregar
+        </button>
+      </div>
+      <div class="espera-list" id="espera-list"></div>
+    </main>
+
   <!-- MODAL REGISTRO -->
   <div class="modal-overlay hidden" id="modal-overlay">
     <div class="modal" id="modal">
@@ -320,6 +338,40 @@
         <div class="modal-footer-right">
           <button class="btn-secondary" id="btn-cancelar">Cancelar</button>
           <button class="btn-primary" id="btn-guardar">Guardar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL LISTA DE ESPERA -->
+  <div class="modal-overlay hidden" id="espera-modal-overlay">
+    <div class="modal modal-sm" id="espera-modal">
+      <div class="modal-header">
+        <h2 class="modal-titulo" id="espera-modal-titulo">Agregar a lista de espera</h2>
+        <button class="modal-close" id="espera-modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Apellido y Nombre <span class="req">*</span></label>
+          <input type="text" class="form-input" id="esp-nombre" placeholder="García, Juan" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">WhatsApp</label>
+          <div class="input-prefix">
+            <span class="prefix">+54</span>
+            <input type="tel" class="form-input" id="esp-wsp" placeholder="341 555 1234" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas</label>
+          <textarea class="form-input form-textarea" id="esp-notas" placeholder="Tipo de vehículo, preferencias…" rows="2"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-danger hidden" id="esp-btn-eliminar">Eliminar</button>
+        <div class="modal-footer-right">
+          <button class="btn-secondary" id="esp-btn-cancelar">Cancelar</button>
+          <button class="btn-primary" id="esp-btn-guardar">Guardar</button>
         </div>
       </div>
     </div>
