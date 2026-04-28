@@ -39,6 +39,10 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
         Alquileres
       </a>
+      <a href="#" class="nav-item" data-view="pagos">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+        Pagos
+      </a>
     </nav>
   </aside>
 
@@ -118,6 +122,47 @@
       </div>
       <div class="alquileres-list" id="alquileres-list"></div>
     </main>
+    <!-- VIEW: PAGOS -->
+    <main class="view" id="view-pagos">
+
+      <!-- Selector de mes -->
+      <div class="pagos-toolbar">
+        <div class="mes-nav">
+          <button class="esp-btn" id="mes-prev">‹</button>
+          <span class="mes-label" id="mes-label">—</span>
+          <button class="esp-btn" id="mes-next">›</button>
+        </div>
+        <div class="pagos-resumen-pills">
+          <span class="resumen-pill pagados" id="pill-pagados">— pagados</span>
+          <span class="resumen-pill pendientes" id="pill-pendientes">— pendientes</span>
+        </div>
+      </div>
+
+      <!-- Resumen por administrador -->
+      <div class="admins-resumen" id="admins-resumen">
+        <div class="admin-card" id="admin-joaquin">
+          <div class="admin-nombre">Joaquín</div>
+          <div class="admin-totales">
+            <span class="admin-pill efectivo">💵 Efectivo: <strong id="jq-ef">$ 0</strong></span>
+            <span class="admin-pill transferencia">📲 Transf.: <strong id="jq-tr">$ 0</strong></span>
+            <span class="admin-pill total-admin">Total: <strong id="jq-tot">$ 0</strong></span>
+          </div>
+        </div>
+        <div class="admin-card" id="admin-federico">
+          <div class="admin-nombre">Federico</div>
+          <div class="admin-totales">
+            <span class="admin-pill efectivo">💵 Efectivo: <strong id="fd-ef">$ 0</strong></span>
+            <span class="admin-pill transferencia">📲 Transf.: <strong id="fd-tr">$ 0</strong></span>
+            <span class="admin-pill total-admin">Total: <strong id="fd-tot">$ 0</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lista de inquilinos -->
+      <div class="pagos-list" id="pagos-list"></div>
+
+    </main>
+
   </div>
 
   <!-- MODAL REGISTRO -->
