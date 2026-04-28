@@ -37,7 +37,7 @@
 
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--text); display: flex; min-height: 100vh; overflow-x: hidden; }
-#app-wrapper { display: flex; flex: 1; min-height: 100vh; min-width: 0; }
+#app-wrapper { display: flex; flex: 1; width: 100%; min-height: 100vh; min-width: 0; overflow-x: hidden; }
 
 /* ===========================
    SIDEBAR
@@ -122,6 +122,8 @@ body { background: var(--bg); color: var(--text); display: flex; min-height: 100
 .main-wrapper {
   margin-left: var(--sidebar-w);
   flex: 1;
+  min-width: 0;
+  width: calc(100% - var(--sidebar-w));
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -911,7 +913,7 @@ select.form-input option { background: var(--bg2); }
   }
   .sidebar-close { display: block; }
   .sidebar-overlay.open { display: block; }
-  .main-wrapper { margin-left: 0; }
+  .main-wrapper { margin-left: 0; width: 100%; }
   .menu-btn { display: flex; }
   .stats-mini { display: none; }
   .form-row { grid-template-columns: 1fr; }
