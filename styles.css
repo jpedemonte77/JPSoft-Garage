@@ -64,7 +64,7 @@ body { background: var(--bg); color: var(--text); display: flex; min-height: 100
 
 .sidebar-logo {
   display: flex;
-  align-items: center;
+  align-items:flex-start;
   gap: 10px;
 }
 
