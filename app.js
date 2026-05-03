@@ -200,8 +200,8 @@ function renderMapa() {
     card.className = `cochera-card ${libre ? "libre" : "ocupado"}`;
     card.innerHTML = `
       <span class="cochera-num">${String(i).padStart(2, "0")}</span>
-      <span class="cochera-icon">${libre ? "🅿️" : (ICONOS[v.tipo] || "🚗")}</span>
       <span class="cochera-label">${libre ? "Libre" : (v.nombre || "").split(/[\s,]+/)[0]}</span>
+      <span class="cochera-tipo-pill ${libre ? "pill-libre" : "pill-" + (v.tipo || "otro")}">${libre ? "Libre" : (TIPOS[v.tipo] || v.tipo || "—")}</span>
     `;
     card.title = libre ? `Cochera ${i} — libre` : `${v.nombre} · ${v.patente || ""}`;
     card.addEventListener("click", () => {
@@ -481,7 +481,7 @@ function abrirDetalle(id) {
     ${v.dni       ? `<div class="detalle-row"><span class="detalle-key">DNI</span><span class="detalle-val">${v.dni}</span></div>` : ""}
     ${v.domicilio ? `<div class="detalle-row"><span class="detalle-key">Domicilio</span><span class="detalle-val">${v.domicilio}</span></div>` : ""}
     <div class="detalle-row"><span class="detalle-key">Patente</span><span class="detalle-val"><span class="v-patente">${v.patente || "—"}</span></span></div>
-    <div class="detalle-row"><span class="detalle-key">Vehículo</span><span class="detalle-val">${ICONOS[v.tipo] || ""} ${v.modelo || TIPOS[v.tipo] || "—"}</span></div>
+    <div class="detalle-row"><span class="detalle-key">Vehículo</span><span class="detalle-val">${v.modelo || TIPOS[v.tipo] || "—"}</span></div>
     <div class="detalle-row"><span class="detalle-key">Seguro</span><span class="detalle-val">${v.seguro || "—"}</span></div>
     <div class="detalle-row"><span class="detalle-key">WhatsApp</span><span class="detalle-val">${v.wsp ? "+54 " + v.wsp : "—"}</span></div>
     <div class="detalle-row"><span class="detalle-key">Alquiler</span><span class="detalle-val">${formatMonto(v.monto)}</span></div>
