@@ -1198,7 +1198,7 @@ function renderBackupStatus() {
 
 // ---- EXPORTAR JSON ----
 function exportarJSON() {
-  const datos = { vehiculos, pagos, espera: listaEspera, mantenimiento, config: { totalEspacios } };
+  const datos = { vehiculos, pagos, espera: listaEspera, mantenimiento, gastos, config: { totalEspacios } };
   const json  = JSON.stringify(datos, null, 2);
   const blob  = new Blob([json], { type: "application/json" });
   const url   = URL.createObjectURL(blob);
@@ -1289,7 +1289,23 @@ async function exportarExcel() {
   const wsM = XLSX.utils.json_to_sheet(mantRows);
   XLSX.utils.book_append_sheet(wb, wsM, "Mantenimiento");
 
-  // ---- Hoja 5: Config ----
+  // ---- Hoja 5: Impuestos y Servicios ----
+  const gastosRows = [];
+  Object.entries(gastos).sort().forEach(([mes, mesDatos]) => {
+    Object.values(mesDatos).forEach(g => {
+      gastosRows.push({
+        "Mes":        mesLabel(mes),
+        "Detalle":    g.detalle || "",
+        "Categoría":  (GASTO_CATEGORIAS[g.categoria] || GASTO_CATEGORIAS.otro).label,
+        "Monto ($)":  g.monto || 0,
+        "Notas":      g.notas || ""
+      });
+    });
+  });
+  const wsG = XLSX.utils.json_to_sheet(gastosRows);
+  XLSX.utils.book_append_sheet(wb, wsG, "Impuestos y Servicios");
+
+  // ---- Hoja 6: Config ----
   const wsC = XLSX.utils.json_to_sheet([{ "Total de espacios": totalEspacios, "Exportado el": fecha }]);
   XLSX.utils.book_append_sheet(wb, wsC, "Config");
 
@@ -1311,6 +1327,7 @@ async function importarJSON(file) {
     if (datos.pagos)        updates["pagos"]               = datos.pagos;
     if (datos.espera)       updates["espera"]              = datos.espera;
     if (datos.mantenimiento) updates["mantenimiento"]      = datos.mantenimiento;
+    if (datos.gastos)       updates["gastos"]              = datos.gastos;
     if (datos.config?.totalEspacios) updates["config/totalEspacios"] = datos.config.totalEspacios;
 
     await set(ref(db), updates);
@@ -1393,6 +1410,31 @@ async function importarExcel(file) {
     }
 
     // Parsear config
+    // Parsear gastos
+    const wsG = wb.Sheets["Impuestos y Servicios"];
+    const newGastos = {};
+    if (wsG) {
+      XLSX.utils.sheet_to_json(wsG).forEach(row => {
+        const mes = Object.entries(MESES_NOMBRES).reduce((found, [i, nombre]) => {
+          if (row["Mes"] && row["Mes"].startsWith(nombre)) return String(Number(i)+1).padStart(2,"0");
+          return found;
+        }, null);
+        const anio = row["Mes"] ? row["Mes"].split(" ")[1] : new Date().getFullYear();
+        if (mes && anio) {
+          const clave = `${anio}-${mes}`;
+          if (!newGastos[clave]) newGastos[clave] = {};
+          const id = "imp_" + Date.now() + "_" + Math.random().toString(36).slice(2,7);
+          const catEntry = Object.entries(GASTO_CATEGORIAS).find(([,v]) => v.label === row["Categoría"]);
+          newGastos[clave][id] = {
+            detalle:   row["Detalle"] || "",
+            monto:     Number(row["Monto ($)"]) || 0,
+            categoria: catEntry ? catEntry[0] : "otro",
+            notas:     row["Notas"] || ""
+          };
+        }
+      });
+    }
+
     const wsC = wb.Sheets["Config"];
     let newTotal = totalEspacios;
     if (wsC) {
@@ -1401,9 +1443,10 @@ async function importarExcel(file) {
     }
 
     const updates = {
-      vehiculos:    newVehiculos,
-      espera:       newEspera,
+      vehiculos:     newVehiculos,
+      espera:        newEspera,
       mantenimiento: newMant,
+      gastos:        newGastos,
       "config/totalEspacios": newTotal
     };
 
